@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>10秒連打ゲーム</title>
+  <link rel="stylesheet" href="style.css">
+  <audio id="clickSound" src="button.mp3" preload="auto"></audio>
+  <audio id="startSound" src="start.mp3" preload="auto"></audio>
+  <audio id="endSound" src="end.mp3" preload="auto"></audio>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="game">
+    <h1>CPS測定ゲーム</h1>
+    <p id="name" class="name"></p>
+
+    <button id="start" class="start">start</button>
+    <p><span id="time" class="time">10.000</span></p>
+    <button id="btn" disabled class="btn">左クリック</button>
+
+    <p class="score">スコア: <span id="count">0</span><span>　　　　　　　ハイスコア:</span><span id="high">0</span></p>
+    <p id="message"></p>
+  </div>
+
+  <div class="ranking">
+    <h2>ランキング</h2>
+    <ul id="ranking"></ul>
+  </div>
+
+</div>
+<footer>The copyright for this content is held by the creator, ©Suzaku, as of April 26, 2026. The content may be used for any purpose.</footer>
+<script>
+let count = 0;
+let timer;
+let time = 10000; // 10秒(ms)
+let name = prompt("名前を教えてください。");
+
+document.getElementById("name").textContent = "挑戦者：" + name;
+
+// ハイスコア読み込み
+let high = localStorage.getItem("high");
+if (high === null) {
+  high = 0;
+  localStorage.setItem("high", 0);
+}
+document.getElementById("high").textContent = high;
+
+// スタート
+document.getElementById("start").onclick = () => {
+  const sound = document.getElementById("startSound");
+  sound.currentTime = 0;
+  sound.play();
+  count = 0;
+  time = 10000;
+
+  document.getElementById("count").textContent = count;
+  document.getElementById("message").textContent = "";
+  document.getElementById("btn").disabled = false;
+  document.getElementById("start").style.display = "none";
+  clearInterval(timer);
+
+  timer = setInterval(() => {
+    time -= 10;
+
+    document.getElementById("time").textContent =
+      (time / 1000).toFixed(3);
+
+    if (time <= 0) {
+      const endSound = document.getElementById("endSound");
+      endSound.currentTime = 0;
+      endSound.play();
+      document.getElementById("start").style.display = "inline-block";
+      let cps = count / 10;
+      clearInterval(timer);
+      document.getElementById("btn").disabled = true;
+      document.getElementById("message").textContent =
+        "CPS: " + cps;
+      let time = 10000;
+      document.getElementById("count").textContent = count;
+      sendScore().then(loadRanking);
+
+      // ハイスコア更新
+      if (count > high) {
+        high = count;
+        localStorage.setItem("high", high);
+        document.getElementById("high").textContent = "ハイスコア更新！"+ high + "回！";
+      }
+    }
+  }, 10);
+};
+
+// クリック
+document.getElementById("btn").onclick = () => {
+  count++;
+  document.getElementById("count").textContent = count;
+
+  // 🔊音再生
+  const sound = document.getElementById("clickSound");
+  sound.currentTime = 0; // 連打でも毎回鳴るようにリセット
+  sound.play();
+};
+
+// 送信
+async function sendScore() {
+  await fetch("https://cpsserver.onrender.com/score", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: name, score: count })
+  });
+}
+
+// ランキング取得
+async function loadRanking() {
+  const res = await fetch("https://cpsserver.onrender.com/ranking");
+  const data = await res.json();
+
+  const list = document.getElementById("ranking");
+  list.innerHTML = "";
+
+  let i = 1;
+  data.forEach(d => {
+    const li = document.createElement("li");
+    li.textContent = i + "位: " + d.name + " (" + d.score + ")";
+    list.appendChild(li);
+    i++;
+  });
+}
+
+loadRanking();
+</script>
+
+</body>
+</html>
