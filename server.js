@@ -64,3 +64,16 @@ app.get("/ranking", (req, res) => {
 app.listen(3000, () => {
   console.log("server running on 3000");
 });
+// 削除
+app.delete("/delete/:name", (req, res) => {
+  const key = req.query.key;
+
+  if (key !== "admin123") return res.status(403).send("no");
+
+  const name = req.params.name;
+
+  scores = scores.filter(s => s.name !== name);
+  save();
+
+  res.json({ ok: true });
+});
